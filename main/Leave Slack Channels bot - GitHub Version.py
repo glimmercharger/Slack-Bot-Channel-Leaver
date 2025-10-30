@@ -1,0 +1,123 @@
+import os
+import sys
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
+
+# --- CONFIGURATION ---
+# >>> IMPORTANT: PASTE YOUR BOT TOKEN HERE <<<
+# It must start with 'xoxb-...'
+SLACK_BOT_TOKEN = "xoxb-Put-your-own-Bot-Token" 
+
+# --- INITIALIZATION ---
+
+# 1. Check if the token has been replaced
+if SLACK_BOT_TOKEN == "YOUR_SLACK_BOT_TOKEN_HERE":
+    print("FATAL ERROR: Please replace 'YOUR_SLACK_BOT_TOKEN_HERE' with your actual bot token.")
+    print("The token is necessary to authenticate with the Slack API.")
+    sys.exit(1) # Exit the script if token is missing
+
+# 2. Initialize the Slack Client
+try:
+    client = WebClient(token=SLACK_BOT_TOKEN)
+    # Test the authentication immediately to catch 'invalid_auth' early
+    auth_test_result = client.auth_test()
+    BOT_USER_ID = auth_test_result['user_id']
+    BOT_NAME = auth_test_result['user']
+    print(f"✅ Authenticated successfully as {BOT_NAME} ({BOT_USER_ID}).")
+
+except SlackApiError as e:
+    if e.response['error'] == 'invalid_auth':
+        print("\n❌ CRITICAL ERROR: The Slack Token is invalid ('invalid_auth').")
+        print("Please check the following:")
+        print("1. Did you copy the full 'xoxb-' Bot User OAuth Token?")
+        print("2. Did you reinstall your Slack App after setting the required scopes?")
+    else:
+        print(f"\n❌ CRITICAL ERROR during authentication: {e.response['error']}")
+    sys.exit(1) # Exit the script on authentication failure
+
+# --- CORE FUNCTIONS ---
+
+def get_bot_channels(client):
+    """Fetches a list of all public and private channels the bot is a member of."""
+    
+    channels_to_leave = []
+    
+    try:
+        print("\n🔍 Searching for channels the bot is a member of...")
+        
+        # 'public_channel' and 'private_channel' (groups) are the types we need
+        result = client.conversations_list(
+            types="public_channel,private_channel",
+            exclude_archived=True,
+            limit=1000 # Max limit to retrieve a large list of channels
+        )
+        
+        # The API call results include only channels the bot is a member of (when using bot token)
+        for channel in result['channels']:
+            # Ensure it's not a DM or MPDM 
+            if not channel.get('is_im') and not channel.get('is_mpim'):
+                channels_to_leave.append(channel)
+        
+        print(f"✅ Found {len(channels_to_leave)} total channels to process.")
+
+    except SlackApiError as e:
+        print(f"❌ Error fetching channel list: {e.response['error']}")
+        return []
+
+    return channels_to_leave
+
+def leave_all_channels(client, channels):
+    """Leaves all specified channels and prints the action for each."""
+    
+    if not channels:
+        print("Nothing to do. No channels found to leave.")
+        return
+
+    print("\n--- Starting Channel Leaving Process ---")
+    
+    channels_left = 0
+    channels_skipped = 0
+
+    for channel in channels:
+        channel_id = channel['id']
+        channel_name = channel.get('name', 'N/A')
+        
+        # Determine the channel type for clearer output
+        if channel.get('is_channel'):
+            channel_type = "Public Channel"
+            prefix = "#"
+        elif channel.get('is_group'):
+            channel_type = "Private Channel"
+            prefix = "🔒"
+        else:
+            channel_type = "Conversation"
+            prefix = ""
+        
+        try:
+            # conversations.leave works for both public channels and private channels (groups)
+            client.conversations_leave(channel=channel_id)
+            print(f"   [LEFT] ✅ {channel_type}: {prefix}{channel_name} ({channel_id})")
+            channels_left += 1
+            
+        except SlackApiError as e:
+            error = e.response['error']
+            
+            # Common errors to handle for logging skipped channels
+            if error == 'cannot_leave_general':
+                print(f" [SKIPPED] ➡️ Cannot leave the mandatory **#general** channel: #{channel_name}")
+            elif error == 'not_in_channel':
+                print(f" [SKIPPED] ➡️ Bot already not a member of: {prefix}{channel_name}")
+            else:
+                print(f"   [ERROR] ❌ Could not leave {prefix}{channel_name} ({channel_id}): {error}")
+            
+            channels_skipped += 1
+                
+    print("\n--- Process Complete ---")
+    print(f"Total Channels Left: **{channels_left}**")
+    print(f"Total Channels Skipped (Error/General): **{channels_skipped}**")
+
+
+# --- MAIN EXECUTION ---
+if __name__ == "__main__":
+    all_channels = get_bot_channels(client)
+    leave_all_channels(client, all_channels)
