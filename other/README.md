@@ -1,6 +1,8 @@
 # Slack Bot Channel Leaver
 This script basiclly makes your Slack Bot leave all your channels in your workspace.
 
+(Script is in folder named "main")
+
 ## Configuration 🛠
 Just replace the configuration section to put your Slack Bot Token.
 
