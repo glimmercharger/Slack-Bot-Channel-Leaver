@@ -22,7 +22,7 @@ A simple Python script that makes your Slack bot leave all channels in your work
 - Run the script
   Simply execute the file, and your bot will start leaving all channels in the workspace.
 
-##💡 Notes
+## 💡 Notes
 
 Make sure your bot has the necessary permissions (like ```channels:read``` and ```groups:write```) in your Slack app configuration.
 
