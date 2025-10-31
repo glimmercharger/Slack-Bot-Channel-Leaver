@@ -120,4 +120,5 @@ def leave_all_channels(client, channels):
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
     all_channels = get_bot_channels(client)
+
     leave_all_channels(client, all_channels)
