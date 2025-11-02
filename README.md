@@ -16,7 +16,7 @@ A simple Python script that makes your Slack bot leave all channels in your work
 
 
 - Add your Slack Bot Token
-  Open ```Leave-Slack-Channels-bot-Script.py``` and replace the placeholder token in the configuration section with your own Slack Bot Token.
+  Open ```Main.py``` and replace the placeholder token in the configuration section with your own Slack Bot Token.
   _a ```.env``` file can be used to prevent tokens being stolen_
 
 - Run the script
